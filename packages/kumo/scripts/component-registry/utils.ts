@@ -5,7 +5,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -189,8 +189,11 @@ export function extractStateClasses(
         ? `${states["not-disabled"]} ${cls}`
         : cls;
     }
-    // Check for data-state
-    else if (cls.match(/^data-\[state=[^\]]+\]:/)) {
+    // Check for data-state (Radix-style) and Base UI data attributes (data-open, data-closed, data-popup-open)
+    else if (
+      cls.match(/^data-\[state=[^\]]+\]:/) ||
+      cls.match(/^data-\[(?:popup-open|open|closed|pressed)\]:/)
+    ) {
       states["data-state"] = states["data-state"]
         ? `${states["data-state"]} ${cls}`
         : cls;

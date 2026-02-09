@@ -248,20 +248,17 @@ Button component
 
   **State Classes:**
   - `"primary"`:
-    - `hover`: `hover:bg-kumo-brand-hover`
-    - `focus`: `focus:bg-kumo-brand-hover`
-    - `disabled`: `disabled:bg-kumo-brand/50`
+    - `not-disabled`: `not-disabled:[:hover,:focus-visible,[data-pressed]]:bg-kumo-brand-hover`
   - `"secondary"`:
-    - `not-disabled`: `not-disabled:hover:border-secondary! not-disabled:hover:bg-kumo-control`
-    - `disabled`: `disabled:bg-kumo-control/50 disabled:!text-kumo-default/70`
-    - `data-state`: `data-[state=open]:bg-kumo-control`
+    - `not-disabled`: `not-disabled:not-data-pressed:hover:ring-kumo-control`
   - `"ghost"`:
-    - `hover`: `hover:bg-kumo-tint`
+    - `not-disabled`: `not-disabled:[:hover,[data-pressed]]:bg-kumo-tint`
   - `"destructive"`:
-    - `hover`: `hover:bg-kumo-danger/70`
+    - `not-disabled`: `not-disabled:[:hover,[data-pressed]]:bg-kumo-danger/70`
   - `"secondary-destructive"`:
-    - `not-disabled`: `not-disabled:hover:border-secondary! not-disabled:hover:bg-kumo-control`
-    - `disabled`: `disabled:bg-kumo-control/50 disabled:!text-kumo-danger/70`
+    - `not-disabled`: `not-disabled:not-data-pressed:hover:ring-kumo-control`
+  - `"outline"`:
+    - `not-disabled`: `not-disabled:[:hover,[data-pressed]]:bg-kumo-control`
     - `data-state`: `data-[state=open]:bg-kumo-control`
 - `id`: string
 - `lang`: string
@@ -273,7 +270,7 @@ Button component
 
 **Colors (kumo tokens used):**
 
-`bg-kumo-base`, `bg-kumo-brand`, `bg-kumo-brand-hover`, `bg-kumo-control`, `bg-kumo-danger`, `bg-kumo-tint`, `ring-kumo-line`, `ring-kumo-ring`, `text-kumo-danger`, `text-kumo-default`, `text-kumo-subtle`
+`bg-kumo-base`, `bg-kumo-brand`, `bg-kumo-brand-hover`, `bg-kumo-control`, `bg-kumo-danger`, `bg-kumo-tint`, `ring-kumo-brand`, `ring-kumo-control`, `ring-kumo-line`, `text-kumo-danger`, `text-kumo-default`
 
 **Examples:**
 
@@ -1530,13 +1527,7 @@ Usage:
           eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </Dialog.Description>
         <div className="mt-8 flex justify-end gap-2">
-          <Dialog.Close
-            render={(props) => (
-              <Button variant="secondary" {...props}>
-                Cancel
-              </Button>
-            )}
-          />
+          <Button variant="secondary">Cancel</Button>
           <Dialog.Close
             render={(props) => (
               <Button variant="destructive" {...props}>
@@ -3036,29 +3027,12 @@ Option sub-component
 <Select
       className="w-[200px]"
       value={value}
-      onValueChange={(v) => setValue(v ?? "Apple")}
-      placeholder="Please select"
+      onValueChange={(v) => setValue(v ?? "apple")}
+      items={{ apple: "Apple", banana: "Banana", cherry: "Cherry" }}
     >
-      <Select.Option value="Apple">Apple</Select.Option>
-      <Select.Option value="Banana">Banana</Select.Option>
-      <Select.Option value="Cherry">Cherry</Select.Option>
-    </Select>
-```
-
-```tsx
-<Select
-      className="w-[200px]"
-      value={value}
-      onValueChange={(v) => setValue(v as string)}
-      items={{
-        bug: "Bug",
-        documentation: "Documentation",
-        feature: "Feature",
-      }}
-    >
-      <Select.Option value="bug">Bug</Select.Option>
-      <Select.Option value="documentation">Documentation</Select.Option>
-      <Select.Option value="feature">Feature</Select.Option>
+      <Select.Option value="apple">Apple</Select.Option>
+      <Select.Option value="banana">Banana</Select.Option>
+      <Select.Option value="cherry">Cherry</Select.Option>
     </Select>
 ```
 
