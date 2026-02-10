@@ -3,9 +3,10 @@ import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  SCREENSHOT_CONFIGS,
-  getAffectedScreenshots,
-  type ScreenshotConfig,
+  COMPONENT_ACTIONS,
+  discoverComponents,
+  getAffectedComponents,
+  type DiscoveredComponent,
 } from "./page-config";
 
 const WORKER_URL =
@@ -18,10 +19,19 @@ interface ScreenshotResult {
   url: string;
   image: string;
   error?: string;
+  sectionId?: string;
+  sectionTitle?: string;
 }
 
 interface WorkerResponse {
   results: ScreenshotResult[];
+}
+
+interface CapturedScreenshot {
+  id: string;
+  name: string;
+  path: string;
+  url: string | null;
 }
 
 interface ComparisonResult {
@@ -141,25 +151,44 @@ async function uploadImageToGitHub(
   return `https://raw.githubusercontent.com/${owner}/${repoName}/${branch}/${path}`;
 }
 
+interface PageRequest {
+  url: string;
+  captureSections: boolean;
+  hideSidebar: boolean;
+  actions?: Array<{ type: string; selector: string; waitAfter?: number }>;
+}
+
 async function captureScreenshots(
   baseUrl: string,
-  configs: ScreenshotConfig[],
+  components: DiscoveredComponent[],
   outputDir: string,
   prefix: string,
-): Promise<Map<string, { path: string; url: string | null }>> {
+): Promise<CapturedScreenshot[]> {
   ensureDir(outputDir);
-  const screenshots = new Map<string, { path: string; url: string | null }>();
+  const screenshots: CapturedScreenshot[] = [];
 
-  const requests = configs.map((config) => ({
-    url: config.url,
-    viewport: config.viewport,
-    actions: config.actions,
-    fullPage: true,
-    hideSidebar: true,
-    _meta: { id: config.id, name: config.name },
-  }));
+  const requests: PageRequest[] = [];
 
-  console.log(`Capturing ${requests.length} screenshot(s) from ${baseUrl}...`);
+  for (const component of components) {
+    requests.push({
+      url: component.url,
+      captureSections: true,
+      hideSidebar: true,
+    });
+
+    const action = COMPONENT_ACTIONS[component.id];
+    if (action) {
+      requests.push({
+        url: component.url,
+        captureSections: false,
+        hideSidebar: true,
+        actions: [action],
+      });
+    }
+  }
+
+  console.log(`Capturing screenshots from ${baseUrl}...`);
+  console.log(`  ${components.length} components, ${requests.length} requests`);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -186,21 +215,43 @@ async function captureScreenshots(
 
   const data = (await response.json()) as WorkerResponse;
 
-  for (let i = 0; i < data.results.length; i++) {
-    const result = data.results[i];
-    const meta = requests[i]._meta;
-    const filename = `${prefix}-${meta.id}.png`;
-    const filepath = join(outputDir, filename);
-
+  for (const result of data.results) {
     if (result.error) {
-      console.warn(`  Error: ${meta.name}: ${result.error}`);
+      console.warn(`  Error: ${result.url}: ${result.error}`);
       continue;
     }
 
     if (!result.image) {
-      console.warn(`  Empty: ${meta.name}`);
+      console.warn(`  Empty: ${result.url}`);
       continue;
     }
+
+    const urlPath = new URL(result.url).pathname.replace(/\/$/, "");
+    const componentSlug = urlPath.split("/").pop() || "unknown";
+
+    const isOpenState = requests.some(
+      (r) =>
+        r.url === urlPath.replace(/\/$/, "") &&
+        r.actions &&
+        r.actions.length > 0,
+    );
+
+    let screenshotId: string;
+    let screenshotName: string;
+
+    if (result.sectionId) {
+      screenshotId = `${componentSlug}-${result.sectionId}`;
+      screenshotName = `${formatName(componentSlug)} / ${result.sectionTitle || result.sectionId}`;
+    } else if (isOpenState) {
+      screenshotId = `${componentSlug}-open`;
+      screenshotName = `${formatName(componentSlug)} (Open)`;
+    } else {
+      screenshotId = componentSlug;
+      screenshotName = formatName(componentSlug);
+    }
+
+    const filename = `${prefix}-${screenshotId}.png`;
+    const filepath = join(outputDir, filename);
 
     const imageBuffer = Buffer.from(result.image, "base64");
     writeFileSync(filepath, imageBuffer);
@@ -208,20 +259,32 @@ async function captureScreenshots(
     let imageUrl: string | null = null;
     try {
       imageUrl = await uploadImageToGitHub(imageBuffer, filename);
-      console.log(`  OK: ${meta.name} -> ${imageUrl}`);
+      console.log(`  OK: ${screenshotName} -> ${imageUrl}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("GITHUB_TOKEN required")) {
-        console.log(`  OK: ${meta.name} (local only, no GITHUB_TOKEN)`);
+        console.log(`  OK: ${screenshotName} (local only, no GITHUB_TOKEN)`);
       } else {
-        console.error(`  Upload failed for ${meta.name}: ${msg}`);
+        console.error(`  Upload failed for ${screenshotName}: ${msg}`);
       }
     }
 
-    screenshots.set(meta.id, { path: filepath, url: imageUrl });
+    screenshots.push({
+      id: screenshotId,
+      name: screenshotName,
+      path: filepath,
+      url: imageUrl,
+    });
   }
 
   return screenshots;
+}
+
+function formatName(slug: string): string {
+  return slug
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function compareImages(beforePath: string, afterPath: string): boolean {
@@ -337,25 +400,31 @@ async function main(): Promise<void> {
   const afterUrl =
     process.env.AFTER_URL ?? process.env.PREVIEW_URL ?? beforeUrl;
 
-  let configs: ScreenshotConfig[];
+  console.log("Discovering components from docs site...");
+  const allComponents = await discoverComponents(beforeUrl);
+  console.log(`Found ${allComponents.length} components\n`);
+
+  let components: DiscoveredComponent[];
 
   if (fullRegression) {
-    configs = SCREENSHOT_CONFIGS;
+    components = allComponents;
     console.log(
-      `Running full visual regression (${configs.length} screenshots)...\n`,
+      `Running full visual regression (${components.length} components)...\n`,
     );
   } else {
     const changedFiles = getChangedFiles();
-    configs = getAffectedScreenshots(changedFiles);
+    components = getAffectedComponents(changedFiles, allComponents);
 
-    if (configs.length === 0) {
+    if (components.length === 0) {
       console.log(
         "No relevant file changes detected. Skipping visual regression.",
       );
       return;
     }
 
-    console.log(`Found ${configs.length} affected screenshot(s)\n`);
+    console.log(`Found ${components.length} affected component(s):`);
+    components.forEach((c) => console.log(`  - ${c.name} (${c.url})`));
+    console.log("");
   }
 
   const beforeDir = join(SCREENSHOTS_DIR, "before");
@@ -364,7 +433,7 @@ async function main(): Promise<void> {
   console.log("=== Capturing BEFORE screenshots ===");
   const beforeScreenshots = await captureScreenshots(
     beforeUrl,
-    configs,
+    components,
     beforeDir,
     "before",
   );
@@ -372,7 +441,7 @@ async function main(): Promise<void> {
   console.log("\n=== Capturing AFTER screenshots ===");
   const afterScreenshots = await captureScreenshots(
     afterUrl,
-    configs,
+    components,
     afterDir,
     "after",
   );
@@ -380,27 +449,36 @@ async function main(): Promise<void> {
   console.log("\n=== Comparing screenshots ===");
   const comparisons: ComparisonResult[] = [];
 
-  for (const config of configs) {
-    const before = beforeScreenshots.get(config.id);
-    const after = afterScreenshots.get(config.id);
+  const beforeMap = new Map(beforeScreenshots.map((s) => [s.id, s]));
+  const afterMap = new Map(afterScreenshots.map((s) => [s.id, s]));
+
+  const allIds = Array.from(
+    new Set([...Array.from(beforeMap.keys()), ...Array.from(afterMap.keys())]),
+  );
+
+  for (const id of allIds) {
+    const before = beforeMap.get(id);
+    const after = afterMap.get(id);
 
     if (!before || !after) continue;
     if (!before.url || !after.url) {
-      console.log(`  ${config.name}: skipped (upload failed)`);
+      console.log(
+        `  ${before?.name || after?.name || id}: skipped (upload failed)`,
+      );
       continue;
     }
 
     const changed = compareImages(before.path, after.path);
 
     comparisons.push({
-      id: config.id,
-      name: config.name,
+      id,
+      name: before.name,
       beforeUrl: before.url,
       afterUrl: after.url,
       changed,
     });
 
-    console.log(`  ${config.name}: ${changed ? "CHANGED" : "unchanged"}`);
+    console.log(`  ${before.name}: ${changed ? "CHANGED" : "unchanged"}`);
   }
 
   console.log("\n=== Generating report ===");
