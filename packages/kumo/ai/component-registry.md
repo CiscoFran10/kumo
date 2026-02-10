@@ -231,12 +231,6 @@ Primary action trigger. Supports multiple variants, sizes, shapes, icons, and lo
 
 **Props:**
 
-- `children`: ReactNode
-- `className`: string
-- `icon`: ReactNode
-  Icon from `@phosphor-icons/react` or a React element. Rendered before children.
-- `loading`: boolean
-  Shows a loading spinner and disables interaction.
 - `shape`: enum [default: base]
   - `"base"`: Default rectangular button shape
   - `"square"`: Square button for icon-only actions
@@ -271,6 +265,12 @@ Primary action trigger. Supports multiple variants, sizes, shapes, icons, and lo
     - `not-disabled`: `not-disabled:hover:border-secondary! not-disabled:hover:bg-kumo-control`
     - `disabled`: `disabled:bg-kumo-control/50 disabled:!text-kumo-danger/70`
     - `data-state`: `data-[state=open]:bg-kumo-control`
+- `children`: ReactNode
+- `className`: string
+- `icon`: ReactNode
+  Icon from `@phosphor-icons/react` or a React element. Rendered before children.
+- `loading`: boolean
+  Shows a loading spinner and disables interaction.
 - `id`: string
 - `lang`: string
 - `title`: string
@@ -321,8 +321,18 @@ Primary action trigger. Supports multiple variants, sizes, shapes, icons, and lo
 
 ```tsx
 <div className="flex flex-wrap items-center gap-3">
-      <Button variant="secondary" shape="square" icon={PlusIcon} />
-      <Button variant="secondary" shape="circle" icon={PlusIcon} />
+      <Button
+        variant="secondary"
+        shape="square"
+        icon={PlusIcon}
+        aria-label="Add item"
+      />
+      <Button
+        variant="secondary"
+        shape="circle"
+        icon={PlusIcon}
+        aria-label="Add item"
+      />
     </div>
 ```
 
@@ -1818,81 +1828,23 @@ This is a compound component. Use these sub-components:
 
 #### Dialog.Root
 
-Controls the open state of the dialog. Doesn't render its own HTML element.
-
-Props:
-- `open`: boolean - Whether the dialog is currently open (controlled mode)
-- `defaultOpen`: boolean [default: false] - Whether the dialog is initially open (uncontrolled mode)
-- `onOpenChange`: (open: boolean, event: Event) => void - Callback fired when the dialog opens or closes
-- `modal`: boolean | 'trap-focus' [default: true] - Whether the dialog is modal. When true, focus is trapped and page scroll is locked
-- `dismissible`: boolean [default: true] - Whether clicking outside closes the dialog
-
-Usage:
-```tsx
-<Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
-```
-```tsx
-<Dialog.Root defaultOpen={false}>
-```
+Root sub-component
 
 #### Dialog.Trigger
 
-A button that opens the dialog when clicked. Renders a `<button>` element.
-
-Props:
-- `render`: ReactElement | ((props, state) => ReactElement) - Custom element to render instead of the default button
-- `disabled`: boolean - Whether the trigger is disabled
-
-Usage:
-```tsx
-<Dialog.Trigger render={<Button>Open</Button>} />
-```
-```tsx
-<Dialog.Trigger>Open Dialog</Dialog.Trigger>
-```
+Trigger sub-component
 
 #### Dialog.Title
 
-A heading that labels the dialog for accessibility. Renders a `<h2>` element.
-
-Props:
-- `render`: ReactElement | ((props, state) => ReactElement) - Custom element to render instead of the default h2
-
-Usage:
-```tsx
-<Dialog.Title>Confirm Action</Dialog.Title>
-```
-```tsx
-<Dialog.Title render={<h3 />}>Custom Heading</Dialog.Title>
-```
+Title sub-component
 
 #### Dialog.Description
 
-A paragraph providing additional context about the dialog. Renders a `<p>` element.
-
-Props:
-- `render`: ReactElement | ((props, state) => ReactElement) - Custom element to render instead of the default p
-
-Usage:
-```tsx
-<Dialog.Description>Are you sure you want to proceed?</Dialog.Description>
-```
+Description sub-component
 
 #### Dialog.Close
 
-A button that closes the dialog when clicked. Renders a `<button>` element.
-
-Props:
-- `render`: ReactElement | ((props, state) => ReactElement) - Custom element to render instead of the default button
-- `disabled`: boolean - Whether the close button is disabled
-
-Usage:
-```tsx
-<Dialog.Close render={<Button>Cancel</Button>} />
-```
-```tsx
-<Dialog.Close>×</Dialog.Close>
-```
+Close sub-component
 
 
 **Examples:**
@@ -1948,6 +1900,48 @@ Usage:
         <Dialog.Description className="text-kumo-subtle">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
           eiusmod tempor incididunt ut labore et dolore magna aliqua.
+        </Dialog.Description>
+        <div className="mt-8 flex justify-end gap-2">
+          <Dialog.Close
+            render={(props) => (
+              <Button variant="secondary" {...props}>
+                Cancel
+              </Button>
+            )}
+          />
+          <Dialog.Close
+            render={(props) => (
+              <Button variant="destructive" {...props}>
+                Delete
+              </Button>
+            )}
+          />
+        </div>
+      </Dialog>
+    </Dialog.Root>
+```
+
+```tsx
+<Dialog.Root disablePointerDismissal>
+      <Dialog.Trigger
+        render={(p) => (
+          <Button {...p} variant="destructive">
+            Delete Project
+          </Button>
+        )}
+      />
+      <Dialog className="p-8">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-kumo-danger/20">
+            <Warning size={20} className="text-kumo-danger" />
+          </div>
+          <Dialog.Title className="text-xl font-semibold">
+            Delete Project?
+          </Dialog.Title>
+        </div>
+        <Dialog.Description className="text-kumo-subtle">
+          This action cannot be undone. This will permanently delete the project
+          and all associated data.
         </Dialog.Description>
         <div className="mt-8 flex justify-end gap-2">
           <Dialog.Close
@@ -2653,8 +2647,10 @@ Label component for form fields.  Provides a standardized way to display labels 
   Tooltip content displayed next to the label via an info icon.
 - `className`: string
   Additional CSS classes merged via `cn()`.
+- `htmlFor`: string
+  The id of the form element this label is associated with
 - `asContent`: boolean
-  When `true`, only renders the inline content (indicators, tooltip) without the outer span with font styling. Useful when composed inside another label element that already provides the text styling.
+  When true, only renders the inline content (indicators, tooltip) without the outer label element with font styling. Useful when composed inside another label element that already provides the text styling.
 
 **Colors (kumo tokens used):**
 
@@ -3479,29 +3475,12 @@ Option sub-component
 <Select
       className="w-[200px]"
       value={value}
-      onValueChange={(v) => setValue(v ?? "Apple")}
-      placeholder="Please select"
+      onValueChange={(v) => setValue(v ?? "apple")}
+      items={{ apple: "Apple", banana: "Banana", cherry: "Cherry" }}
     >
-      <Select.Option value="Apple">Apple</Select.Option>
-      <Select.Option value="Banana">Banana</Select.Option>
-      <Select.Option value="Cherry">Cherry</Select.Option>
-    </Select>
-```
-
-```tsx
-<Select
-      className="w-[200px]"
-      value={value}
-      onValueChange={(v) => setValue(v as string)}
-      items={{
-        bug: "Bug",
-        documentation: "Documentation",
-        feature: "Feature",
-      }}
-    >
-      <Select.Option value="bug">Bug</Select.Option>
-      <Select.Option value="documentation">Documentation</Select.Option>
-      <Select.Option value="feature">Feature</Select.Option>
+      <Select.Option value="apple">Apple</Select.Option>
+      <Select.Option value="banana">Banana</Select.Option>
+      <Select.Option value="cherry">Cherry</Select.Option>
     </Select>
 ```
 

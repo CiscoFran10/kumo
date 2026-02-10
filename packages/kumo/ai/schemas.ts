@@ -131,13 +131,13 @@ export const BreadcrumbsPropsSchema = z.object({
 });
 
 export const ButtonPropsSchema = z.object({
+  shape: z.enum(["base", "square", "circle"]).optional(),
+  size: z.enum(["xs", "sm", "base", "lg"]).optional(),
+  variant: z.enum(["primary", "secondary", "ghost", "destructive", "secondary-destructive", "outline"]).optional(),
   children: z.union([z.string(), z.number(), z.boolean(), z.null(), DynamicValueSchema]).optional(),
   className: z.string().optional(),
   icon: z.union([z.string(), z.number(), z.boolean(), z.null(), DynamicValueSchema]).optional(), // Icon from `@phosphor-icons/react` or a React element. Rendered before children.
   loading: z.boolean().optional(), // Shows a loading spinner and disables interaction.
-  shape: z.enum(["base", "square", "circle"]).optional(), // Button shape. - `"base"` — Default rectangular button - `"square"` — Square button for icon-only actions - `"circle"` — Circular button for icon-only actions
-  size: z.enum(["xs", "sm", "base", "lg"]).optional(), // Button size. - `"xs"` — Extra small for compact UIs - `"sm"` — Small for secondary actions - `"base"` — Default size - `"lg"` — Large for primary CTAs
-  variant: z.enum(["primary", "secondary", "ghost", "destructive", "secondary-destructive", "outline"]).optional(), // Visual style of the button. - `"primary"` — High-emphasis, brand-colored for primary actions - `"secondary"` — Default style with border for most actions - `"ghost"` — Minimal, no background for tertiary actions - `"destructive"` — Danger button for destructive actions - `"secondary-destructive"` — Secondary style with destructive text - `"outline"` — Bordered with transparent background
   id: z.string().optional(),
   lang: z.string().optional(),
   title: z.string().optional(),
@@ -526,7 +526,8 @@ export const LabelPropsSchema = z.object({
   showOptional: z.boolean().optional(), // When `true`, shows gray "(optional)" text after the label.
   tooltip: z.union([z.string(), z.number(), z.boolean(), z.null(), DynamicValueSchema]).optional(), // Tooltip content displayed next to the label via an info icon.
   className: z.string().optional(), // Additional CSS classes merged via `cn()`.
-  asContent: z.boolean().optional(), // When `true`, only renders the inline content (indicators, tooltip) without the outer span with font styling. Useful when composed inside another label element that already provides the text styling.
+  htmlFor: z.string().optional(), // The id of the form element this label is associated with
+  asContent: z.boolean().optional(), // When true, only renders the inline content (indicators, tooltip) without the outer label element with font styling. Useful when composed inside another label element that already provides the text styling.
 });
 
 export const LayerCardPropsSchema = z.object({

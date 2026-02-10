@@ -51,6 +51,12 @@ export {
   DialogTitle,
   DialogDescription,
   DialogClose,
+  type DialogProps,
+  type DialogRootProps,
+  type DialogTriggerProps,
+  type DialogTitleProps,
+  type DialogDescriptionProps,
+  type DialogCloseProps,
 } from "./components/dialog";
 export { DropdownMenu } from "./components/dropdown";
 export { Collapsible } from "./components/collapsible";
@@ -75,6 +81,7 @@ export {
   inputVariants,
   type InputProps,
   InputArea,
+  Textarea,
   type InputAreaProps,
   InputGroup,
 } from "./components/input";
@@ -95,7 +102,12 @@ export { Switch } from "./components/switch";
 export { Tabs, type TabsProps, type TabsItem } from "./components/tabs";
 export { Table } from "./components/table";
 export { Text } from "./components/text";
-export { Toasty, Toast, useKumoToastManager } from "./components/toast";
+export {
+  Toasty,
+  ToastProvider,
+  Toast,
+  useKumoToastManager,
+} from "./components/toast";
 export { Tooltip, TooltipProvider } from "./components/tooltip";
 export {
   Popover,
